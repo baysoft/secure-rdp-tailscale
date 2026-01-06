@@ -195,7 +195,7 @@ options:
 
 ===== FIREWALL RULES =====
 [OK] Tailscale RDP allow rule exists
-[OK] RDP block rule exists
+    Action: Allow, Enabled: True
 
 ===== PORT LISTENING =====
 [OK] Port 3390 is listening
@@ -204,6 +204,8 @@ RESULT=SUCCESS
 TAILSCALE_IP=100.127.251.35
 RDP_PORT=3390
 ```
+
+**Note**: The verification script checks for the Allow rule on Tailscale interface. Block rules are not needed as Windows Firewall's default behavior blocks all other interfaces.
 
 ## Service Management
 
@@ -346,8 +348,9 @@ All good. Server hardened successfully.
 - **VPN-Only Access**: RDP traffic only flows through encrypted Tailscale VPN
 - **Non-Standard Port**: Reduces automated scanning attempts
 - **NLA Enforcement**: Requires authentication before full RDP session
-- **Firewall Lockdown**: Blocks RDP on public/private network interfaces
+- **Interface-Specific Firewall**: RDP only allowed on Tailscale interface, all other interfaces implicitly blocked
 - **Zero-Trust Model**: Access restricted to authorized Tailscale nodes
+- **Simplified Rules**: Single Allow rule prevents conflicts and ensures reliable connectivity
 
 ## Post-Hardening Steps
 
@@ -369,6 +372,10 @@ All good. Server hardened successfully.
 - **Port Not Listening**: Run `restart_rdp.py` to restart Terminal Services or reboot the server
 - **Verification Fails**: Check Tailscale is running with `tailscale status` on the server
 - **Can't Connect via Tailscale**: Ensure both client and server are authenticated to Tailscale network
+  - Verify client shows server in `tailscale status`
+  - Check `Test-NetConnection -ComputerName <tailscale-ip> -Port 3390` from client
+  - Ensure using Tailscale IP (100.x.x.x), not public IP
+- **Connection Times Out (Error 0x204)**: You're likely connecting to public IP instead of Tailscale IP, or client not on Tailscale network
 
 ### Debug Mode
 
@@ -385,6 +392,19 @@ The tool uses **Base64 encoding** to upload PowerShell scripts to the remote ser
 - **Minimum Version**: PowerShell 5.1 (included in Windows Server 2016+)
 - **Compatibility Fix**: Ternary operators replaced with if-else statements for PS 5.1 compatibility
 - **Error Handling**: Explicit error checking for each hardening step
+
+### Firewall Strategy
+
+The tool uses a **simplified, single-rule approach**:
+
+- **Single Allow Rule**: Creates one firewall rule allowing RDP only on the Tailscale interface
+- **No Block Rules**: Relies on Windows Firewall's default-deny behavior for other interfaces
+- **Why This Works**: Interface-specific Allow rules are more reliable than combining Allow + Block rules
+- **Security**: Port 3390 is only accessible via Tailscale; all other interfaces are implicitly blocked
+
+**Previous Approach (Problematic)**: Earlier versions created both Allow and Block rules, but Windows Firewall's rule precedence caused Block rules to interfere with the Allow rule, preventing connections even through Tailscale.
+
+**Current Approach (Optimal)**: Single Allow rule on Tailscale interface provides the same security with better reliability.
 
 ### Files Overview
 

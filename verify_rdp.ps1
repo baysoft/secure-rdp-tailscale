@@ -8,7 +8,6 @@ $Results = @{
     RDPEnabled = $false
     RDPPort = 0
     FirewallTailscaleRule = $false
-    FirewallBlockRule = $false
     PortListening = $false
 }
 
@@ -84,20 +83,6 @@ try {
     Write-Output "[FAIL] Could not check Tailscale firewall rule"
 }
 
-# Check block rule
-try {
-    $blockRule = Get-NetFirewallRule -DisplayName "Block RDP on Public/Private" -ErrorAction SilentlyContinue
-    if ($blockRule) {
-        Write-Output "[OK] RDP block rule exists"
-        Write-Output "    Action: $($blockRule.Action), Enabled: $($blockRule.Enabled), Profile: $($blockRule.Profile)"
-        $Results.FirewallBlockRule = $true
-    } else {
-        Write-Output "[FAIL] RDP block rule not found"
-    }
-} catch {
-    Write-Output "[FAIL] Could not check block firewall rule"
-}
-
 Write-Output ""
 Write-Output "===== PORT LISTENING ====="
 
@@ -135,12 +120,12 @@ Write-Output "Tailscale IP: $($Results.TailscaleIP)"
 Write-Output "RDP Enabled: $($Results.RDPEnabled)"
 Write-Output "RDP Port: $($Results.RDPPort)"
 Write-Output "Firewall Allow Rule: $($Results.FirewallTailscaleRule)"
-Write-Output "Firewall Block Rule: $($Results.FirewallBlockRule)"
 Write-Output "Port Listening: $($Results.PortListening)"
 
 Write-Output ""
 Write-Output "===== MACHINE READABLE ====="
-$allGood = $Results.TailscaleRunning -and $Results.RDPEnabled -and $Results.FirewallTailscaleRule -and $Results.FirewallBlockRule -and $Results.PortListening
+# Note: Block rules not checked - Windows Firewall default behavior blocks non-Tailscale interfaces
+$allGood = $Results.TailscaleRunning -and $Results.RDPEnabled -and $Results.FirewallTailscaleRule -and $Results.PortListening
 $result = if ($allGood) { 'SUCCESS' } else { 'FAIL' }
 Write-Output "RESULT=$result"
 Write-Output "TAILSCALE_IP=$($Results.TailscaleIP)"

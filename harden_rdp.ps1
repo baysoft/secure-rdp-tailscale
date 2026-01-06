@@ -125,25 +125,19 @@ if ($currentPort -ne $NewRdpPort) {
 try {
     # Remove old rules to avoid duplicates
     Get-NetFirewallRule -DisplayName "*RDP over Tailscale*" | Remove-NetFirewallRule -ErrorAction SilentlyContinue
-    Get-NetFirewallRule -DisplayName "*Block RDP on Public/Private*" | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+    Get-NetFirewallRule -DisplayName "*Block RDP*" | Remove-NetFirewallRule -ErrorAction SilentlyContinue
 
     # Allow RDP only on Tailscale interface
+    # Note: No Block rules needed - Windows Firewall default behavior blocks all other interfaces
     New-NetFirewallRule `
         -DisplayName "RDP over Tailscale Only" `
         -Direction Inbound `
         -Protocol TCP `
         -LocalPort $NewRdpPort `
-        -InterfaceAlias "Tailscale*" `
-        -Action Allow
-
-    # Block RDP everywhere else
-    New-NetFirewallRule `
-        -DisplayName "Block RDP on Public/Private" `
-        -Direction Inbound `
-        -Protocol TCP `
-        -LocalPort $NewRdpPort `
-        -Action Block `
-        -Profile Public,Private
+        -InterfaceAlias "Tailscale" `
+        -Action Allow `
+        -Profile Any `
+        -Enabled True
 
     $Status.Firewall = "OK"
     Report "Firewall rules applied" $true
